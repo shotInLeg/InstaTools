@@ -21,7 +21,9 @@ SOURCES += main.cpp\
     instatags.cpp \
     instarelat.cpp \
     instagenname.cpp \
-    instamassauth.cpp
+    instamassauth.cpp \
+    instaliking.cpp \
+    netthread.cpp
 
 HEADERS  += instatools.h \
     http_request/http_request.h \

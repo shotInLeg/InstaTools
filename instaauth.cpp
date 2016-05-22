@@ -15,19 +15,23 @@ void InstaTools::getToken(QUrl url)
 }
 
 
+
+
 void InstaTools::on_bAuth_clicked()
 {
-    access_token = insta_api::authentiacation( ui->eLogin->text(), ui->ePassword->text() );
+    QVector< QPair<NetThread::method, QVector<QString> > > queue;
+    NetThread * th = new NetThread();
+    QVector<QString> params;
 
 
-    if(access_token == "error")
-    {
-        ui->lAuthStatus1->setText("Вам не удалось авторизоваться");
-        ui->lAuthStatus2->setText("Проверьте логин/пароль на корректность");
-        return;
-    }
+    params.push_back( ui->eLogin->text() );
+    params.push_back( ui->ePassword->text() );
+    queue.push_back( {NetThread::AUTH, params} );
 
-    ui->lAuthStatus1->setText("Вы успешно авторизовались");
-    ui->lAuthStatus2->setText(access_token);
+    th->setFlag( queue );
+
+    connect(th, SIGNAL(finishAuth(QString)), this, SLOT(saveSignleAuthToken(QString)) );
+    connect(th, SIGNAL(finished()), th, SLOT(deleteLater()));
+    th->start();
 }
 

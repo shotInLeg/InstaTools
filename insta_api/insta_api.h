@@ -19,6 +19,7 @@ namespace insta_api
         QString create_time;
         QString owner_id;
         QString owner_username;
+        QString url;
         int likes;
     };
 
@@ -38,8 +39,12 @@ namespace insta_api
 
     QVector<user> getFollows(QString access_token);
     QVector<user> getFollowers(QString access_token);
-    QVector<media> getMediaList(user user, QString access_token);
-    void setLike(media ph , QString access_token);
+    QVector<user> getUserFollows(QString user_id, QString access_token);
+    QVector<user> getUserFollowers(QString user_id, QString access_token);
+    QVector<media> getMediaList(QString user_id, QString access_token);
+    QVector<user> getMediaLikersList(QString media_id, QString access_token);
+    void setLike (QString media_id, QString access_token );
+    void setFollow( QString user_id, QString access_token );
     QString getIdFromUsername(QString username , QString access_token);
     QVector<media> getHotList(QString tag, QString access_token, int count);
 

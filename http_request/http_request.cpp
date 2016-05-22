@@ -40,7 +40,7 @@ QByteArray http_request::head(QString url, QMap<QString, QString> data)
 }
 
 
-QByteArray http_request::get(QString url, QMap<QString, QString> data)
+QByteArray http_request::get(QString url, QMap<QString, QString> data )
 {
     QString url_params = url;
 

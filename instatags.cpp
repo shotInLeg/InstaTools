@@ -6,6 +6,7 @@ void InstaTools::on_bReloadHot_clicked()
     ui->pteIdsHot->clear();
     ui->pteMediaIdsHot->clear();
     ui->pteUsernamesHot->clear();
+    ui->lCountMedia->setText("0");
 
     QVector<QString> tags;
     for(int i = 0; i < ui->pteTagsForSearch->document()->lineCount(); i++)
@@ -16,18 +17,19 @@ void InstaTools::on_bReloadHot_clicked()
 
     ui->lCountTags->setText("Считано: " + QString::number(tags.size()));
 
-    int count_results = 0;
+    QVector< QPair<NetThread::method, QVector<QString> > > queue;
+    NetThread * th = new NetThread();
     for(int i = 0; i < tags.size(); i++)
     {
-        QVector<insta_api::media> list = insta_api::getHotList(tags.at(i), access_token, 200);
-        for(int i = 0; i < list.size(); i++)
-        {
-            ui->pteMediaIdsHot->appendPlainText(list.at(i).id);
-            ui->pteUsernamesHot->appendPlainText(list.at(i).owner_username);
-            ui->pteIdsHot->appendPlainText(list.at(i).owner_id);
-        }
-        count_results += list.size();
-    }
+        QVector<QString> params;
+        params.push_back( access_token );
+        params.push_back( tags.at(i) );
 
-    ui->lCountMedia->setText("Загружено: " + QString::number(count_results));
+        queue.push_back( { NetThread::GET_TAGS, params } );
+    }
+    th->setFlag( queue );
+
+    connect(th, SIGNAL(finishGetTags(QVector<insta_api::media>)), this, SLOT(printVectorTags(QVector<insta_api::media>)) );
+    connect(th, SIGNAL(finished()), th, SLOT(deleteLater()));
+    th->start();
 }

@@ -5,14 +5,20 @@ void InstaTools::on_bMassAuth_clicked()
 {
     QVector< QVector<QString> > login_data = getParsedVectorFromPlainText(ui->pteLoginDataList);
 
-    list_access_token.clear();
+    QVector< QPair<NetThread::method, QVector<QString> > > queue;
+    NetThread * th = new NetThread();
+    QVector<QString> params;
+
     for(int i = 0; i < login_data.size(); i++)
     {
-        QString cur_access_token = insta_api::authentiacation( login_data[i][0], login_data[i][1] );
-        list_access_token.push_back( {login_data[i][0],cur_access_token} );
+        params.push_back( login_data[i][0] );
+        params.push_back( login_data[i][1] );
+        queue.push_back( {NetThread::AUTH, params} );
+        params.clear();
     }
+    th->setFlag( queue );
 
-    ui->lwRelTokenList->clear();
-    printVecotrToListWidget(list_access_token, ui->lwRelTokenList);
-    printVecotrToPlainText(list_access_token, ui->pteTokenList);
+    connect(th, SIGNAL(finishAuth(QString)), this, SLOT(saveAuthToken(QString)) );
+    connect(th, SIGNAL(finished()), th, SLOT(deleteLater()));
+    th->start();
 }

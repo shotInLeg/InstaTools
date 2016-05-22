@@ -14,7 +14,7 @@
 namespace http_request
 {
     QByteArray head( QString url, QMap<QString, QString> data );
-    QByteArray get(QString url, QMap<QString, QString> data );
+    QByteArray get(QString url, QMap<QString, QString> data = QMap<QString, QString>() );
     QByteArray post( QString url, QMap<QString, QString> data );
     QMap<QString, QString> cookieFromURL( QString url );
 

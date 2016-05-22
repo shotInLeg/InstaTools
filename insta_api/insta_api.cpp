@@ -164,33 +164,6 @@ QString insta_api::getTokenFromURL(QString url)
 }
 
 
-
-
-
-
-
-
-
-
-void insta_api::setLike(insta_api::media ph, QString access_token)
-{
-    QMap<QString, QString> data;
-    data["access_token"] = access_token;
-
-    QByteArray answer = http_request::post("https://api.instagram.com/v1/media/"+ph.id+"/likes", data);
-
-    if( answer.isEmpty() )
-    {
-        qDebug() << "Пустой ответ в instaAPI::setLike()";
-    }
-    if( !answer.contains("meta") )
-    {
-        qDebug() << "Неверный ответ в instaAPI::setLike()";
-    }
-}
-
-
-
 QString insta_api::getIdFromUsername(QString username, QString access_token)
 {
     QMap<QString, QString> data;
@@ -198,7 +171,7 @@ QString insta_api::getIdFromUsername(QString username, QString access_token)
     data["access_token"] = access_token;
     QByteArray answer = http_request::get( "https://api.instagram.com/v1/users/search", data );
 
-    //qDebug() << answer;
+    qDebug() << answer;
 
     if( answer.isEmpty() )
     {
@@ -210,20 +183,21 @@ QString insta_api::getIdFromUsername(QString username, QString access_token)
     {
         QVariantMap user = usersList[i].toMap();
 
-        QString id = user.value("id").toString();
-
-        return id;
+        if( usersList[i].toMap().value("username").toString() == username )
+        {
+            QString id = user.value("id").toString();
+            return id;
+        }
     }
-
     return "-1";
 }
 
-QVector<insta_api::media> insta_api::getMediaList( insta_api::user user, QString access_token )
+QVector<insta_api::media> insta_api::getMediaList( QString user_id, QString access_token )
 {
     QMap<QString, QString> data;
     data["access_token"] = access_token;
 
-    QByteArray answer = http_request::get( "https://api.instagram.com/v1/users/"+user.id+"/media/recent/", data );
+    QByteArray answer = http_request::get( "https://api.instagram.com/v1/users/"+user_id+"/media/recent/", data );
 
     if( answer.isEmpty() )
     {
@@ -236,21 +210,27 @@ QVector<insta_api::media> insta_api::getMediaList( insta_api::user user, QString
     for(int i = 0; i < mediaList.size(); i++)
     {
         QVariantMap media = mediaList[i].toMap();
+        QVariantMap media_user = mediaList[i].toMap().value("user").toMap();
+        QVariantMap media_image = mediaList[i].toMap().value("images").toMap();
+
         insta_api::media md;
 
         md.id = media.value("id").toString();
         md.create_time = media.value("created_time").toString();
-        md.likes = 0;
+        md.likes = media.value("likes").toMap().value("count").toInt();
 
+        md.owner_id = media_user.value("id").toString();
+        md.owner_username = media_user.value("username").toString();
 
-        //check time need here
+        md.url = media_image.value("low_resolution").toMap().value("url").toString();
+
         medias.push_back( md );
     }
 
-    for( int i = 0; i < medias.size(); ++i )
+    qDebug() << "COUNT PHOTO USER : " << medias.size();
+    for(int i = 0; i < medias.size(); i++)
     {
-        qDebug() << "{ id:" << medias.at(i).id;
-        qDebug() << "  time:" << medias.at(i).create_time << " }";
+        qDebug() << "PHOTO URL : " << medias.at(i).likes << " : " << medias.at(i).url;
     }
 
     return medias;
@@ -277,14 +257,18 @@ QVector<insta_api::media> insta_api::getHotList(QString tag, QString access_toke
     {
         QVariantMap media = mediaList[i].toMap();
         QVariantMap media_user = mediaList[i].toMap().value("user").toMap();
+        QVariantMap media_image = mediaList[i].toMap().value("images").toMap();
 
         insta_api::media md;
 
         md.id = media.value("id").toString();
         md.create_time = media.value("created_time").toString();
+        md.likes = media.value("likes").toMap().value("count").toInt();
 
         md.owner_id = media_user.value("id").toString();
         md.owner_username = media_user.value("username").toString();
+
+        md.url = media_image.value("low_resolution").toMap().value("url").toString();
 
 
         medias.push_back( md );
@@ -306,17 +290,26 @@ QVector<insta_api::user> insta_api::getFollows(QString access_token)
     }
 
     QVector<insta_api::user> users;
-
-    QVariantList followsList = QtJson::parse(answer).toMap().value("data").toList();
-    for(int i = 0; i < followsList.size(); i++)
+    QString next_url  = "1"; int c = 0;
+    while(c < 1000000 && next_url != "")
     {
-        QVariantMap fllw_map = followsList[i].toMap();
-        insta_api::user fllw;
+        QVariantList followsList = QtJson::parse(answer).toMap().value("data").toList();
+        for(int i = 0; i < followsList.size(); i++)
+        {
+            QVariantMap fllw_map = followsList[i].toMap();
+            insta_api::user fllw;
 
-        fllw.id = fllw_map.value("id").toString();
-        fllw.username = fllw_map.value("username").toString();;
+            fllw.id = fllw_map.value("id").toString();
+            fllw.username = fllw_map.value("username").toString();;
 
-        users.push_back( fllw );
+            users.push_back( fllw );
+        }
+
+        next_url = QtJson::parse(answer).toMap().value("pagination").toMap().value("next_url").toString();
+        answer = http_request::get( next_url );
+        qDebug() << c << "   >    " << next_url;
+
+        c++;
     }
 
     return users;
@@ -335,18 +328,184 @@ QVector<insta_api::user> insta_api::getFollowers(QString access_token)
     }
 
     QVector<insta_api::user> users;
-
-    QVariantList followsList = QtJson::parse(answer).toMap().value("data").toList();
-    for(int i = 0; i < followsList.size(); i++)
+    QString next_url  = "1"; int c = 0;
+    while(c < 1000000 && next_url != "")
     {
-        QVariantMap fllw_map = followsList[i].toMap();
-        insta_api::user fllw;
+        QVariantList followsList = QtJson::parse(answer).toMap().value("data").toList();
+        for(int i = 0; i < followsList.size(); i++)
+        {
+            QVariantMap fllw_map = followsList[i].toMap();
+            insta_api::user fllw;
 
-        fllw.id = fllw_map.value("id").toString();
-        fllw.username = fllw_map.value("username").toString();;
+            fllw.id = fllw_map.value("id").toString();
+            fllw.username = fllw_map.value("username").toString();;
 
-        users.push_back( fllw );
+            users.push_back( fllw );
+        }
+
+        next_url = QtJson::parse(answer).toMap().value("pagination").toMap().value("next_url").toString();
+        answer = http_request::get( next_url );
+        qDebug() << c << "   >    " << next_url;
+
+        c++;
     }
 
     return users;
 }
+
+QVector<insta_api::user> insta_api::getUserFollows(QString user_id, QString access_token)
+{
+    QMap<QString, QString> data;
+    data["access_token"] = access_token;
+
+    QByteArray answer = http_request::get( "https://api.instagram.com/v1/users/"+user_id+"/follows", data );
+
+    if( answer.isEmpty() )
+    {
+        qDebug() << "Пустой ответ в insta_api::getUserFollows";
+    }
+
+    QVector<insta_api::user> users;
+    QString next_url  = "1"; int c = 0;
+    while(c < 1000000 && next_url != "")
+    {
+        QVariantList followsList = QtJson::parse(answer).toMap().value("data").toList();
+        for(int i = 0; i < followsList.size(); i++)
+        {
+            QVariantMap fllw_map = followsList[i].toMap();
+            insta_api::user fllw;
+
+            fllw.id = fllw_map.value("id").toString();
+            fllw.username = fllw_map.value("username").toString();;
+
+            users.push_back( fllw );
+        }
+
+        next_url = QtJson::parse(answer).toMap().value("pagination").toMap().value("next_url").toString();
+        answer = http_request::get( next_url );
+        qDebug() << c << "   >    " << next_url;
+
+        c++;
+    }
+
+    return users;
+}
+
+QVector<insta_api::user> insta_api::getUserFollowers(QString user_id, QString access_token)
+{
+    QMap<QString, QString> data;
+    data["access_token"] = access_token;
+
+    QByteArray answer = http_request::get( "https://api.instagram.com/v1/users/"+user_id+"/followed-by", data );
+
+    if( answer.isEmpty() )
+    {
+        qDebug() << "Пустой ответ в insta_api::getFollowers";
+    }
+
+    QVector<insta_api::user> users;
+    QString next_url  = "1"; int c = 0;
+    while(c < 1000000 && next_url != "")
+    {
+        QVariantList followsList = QtJson::parse(answer).toMap().value("data").toList();
+        for(int i = 0; i < followsList.size(); i++)
+        {
+            QVariantMap fllw_map = followsList[i].toMap();
+            insta_api::user fllw;
+
+            fllw.id = fllw_map.value("id").toString();
+            fllw.username = fllw_map.value("username").toString();;
+
+            users.push_back( fllw );
+        }
+
+        next_url = QtJson::parse(answer).toMap().value("pagination").toMap().value("next_url").toString();
+        answer = http_request::get( next_url );
+        qDebug() << c << "   >    " << next_url;
+
+        c++;
+    }
+
+    return users;
+}
+
+QVector<insta_api::user> insta_api::getMediaLikersList(QString media_id, QString access_token)
+{
+    QMap<QString, QString> data;
+    data["access_token"] = access_token;
+
+    QByteArray answer = http_request::get( "https://api.instagram.com/v1/media/"+media_id+"/likes", data );
+
+    if( answer.isEmpty() )
+    {
+        qDebug() << "Пустой ответ в insta_api::getMediaLikersList";
+    }
+
+    //qDebug() << answer;
+
+    QVector<insta_api::user> users;
+    QString next_url  = "1"; int c = 0;
+    while(c < 100 && next_url != "")
+    {
+        QVariantList userList = QtJson::parse(answer).toMap().value("data").toList();
+        for(int i = 0; i < userList.size(); i++)
+        {
+            QVariantMap user_map = userList[i].toMap();
+            insta_api::user usr;
+
+            usr.id = user_map.value("id").toString();
+            usr.username = user_map.value("username").toString();;
+
+            users.push_back( usr );
+        }
+
+        next_url = QtJson::parse(answer).toMap().value("pagination").toMap().value("next_url").toString();
+        answer = http_request::get( next_url );
+        qDebug() << c << "   >    " << next_url;
+
+        c++;
+    }
+
+    return users;
+}
+
+
+void insta_api::setLike(QString media_id, QString access_token)
+{
+    QMap<QString, QString> data;
+    data["access_token"] = access_token;
+
+    QByteArray answer = http_request::post("https://api.instagram.com/v1/media/"+media_id+"/likes", data);
+
+    if( answer.isEmpty() )
+    {
+        qDebug() << "Пустой ответ в instaAPI::setLike()";
+    }
+    if( !answer.contains("meta") )
+    {
+        qDebug() << "Неверный ответ в instaAPI::setLike()";
+    }
+}
+
+void insta_api::setFollow(QString user_id, QString access_token)
+{
+    QMap<QString, QString> data;
+    data["access_token"] = access_token;
+    data["action"] = "follow";
+
+    QByteArray answer = http_request::post("https://api.instagram.com/v1/users/"+user_id+"/relationship", data);
+    qDebug() << QtJson::parse(answer).toMap().value("data").toMap().value("outgoing_status").toString();
+
+    if( answer.isEmpty() )
+    {
+        qDebug() << "Пустой ответ в instaAPI::setFollow()";
+    }
+    if( !answer.contains("meta") )
+    {
+        qDebug() << "Неверный ответ в instaAPI::setFollow()";
+    }
+}
+
+
+
+
