@@ -9,6 +9,7 @@ InstaTools::InstaTools(QWidget *parent) :
 
     qRegisterMetaType< QVector<insta_api::user> >();
     qRegisterMetaType< QVector<insta_api::media> >();
+    qRegisterMetaType< insta_api::account >();
 
     QString client_id = "99e5da2ffc694c1db55491d47fb82377";
     QString redirect_uri = "shotinleg.xyz/passcode.php";
@@ -85,6 +86,54 @@ void InstaTools::printMapToPlainText(const QMap<QString, int> &map, QPlainTextEd
     }
 }
 
+QString InstaTools::getProxyType( const QString& proxy_line )
+{
+    if( proxy_line == "" )
+        return "";
+
+    QStringList list = proxy_line.split(" ");
+
+    if( list.size() <= 0 )
+        return "";
+
+    return list.at(0);
+}
+
+QString InstaTools::getProxyIp(const QString &proxy_line)
+{
+    if( proxy_line == "" )
+        return "";
+
+    QStringList list = proxy_line.split(" ");
+
+    if( list.size() <= 0 )
+        return "";
+
+    QString ip_port = list.at(1);
+
+    return ip_port.split(":").at(0);
+}
+
+QString InstaTools::getProxyPort(const QString &proxy_line)
+{
+    if( proxy_line == "" )
+        return "";
+
+    QStringList list = proxy_line.split(" ");
+
+    if( list.size() <= 0 )
+        return "";
+
+    QString ip_port = list.at(1);
+
+    return ip_port.split(":").at(1);
+}
+
+QString InstaTools::getAppId()
+{
+    return "99e5da2ffc694c1db55491d47fb82377";
+}
+
 void InstaTools::printVectorFollows(const QVector<insta_api::user> &vector)
 {
     QVector<QString> id;
@@ -115,56 +164,25 @@ void InstaTools::printVectorFollowers(const QVector<insta_api::user> &vector)
 
 void InstaTools::printVectorTags(const QVector<insta_api::media> &vector)
 {
-    QVector<QString> id;
-    QVector<QString> username;
-    QVector<QString> id_ow;
+//    QVector<QString> id;
+//    QVector<QString> username;
+//    QVector<QString> id_ow;
 
-    for(int i = 0; i < vector.size(); i++)
-    {
-        id.push_back( vector.at(i).id );
-        username.push_back( vector.at(i).owner_username );
-        id_ow.push_back( vector.at(i).owner_id );
-    }
+//    for(int i = 0; i < vector.size(); i++)
+//    {
+//        id.push_back( vector.at(i).id );
+//        username.push_back( vector.at(i).owner_username );
+//        id_ow.push_back( vector.at(i).owner_id );
+//    }
 
-    ui->lCountMedia->setText( QString::number( ui->lCountMedia->text().toInt() + vector.size() ) );
+//    ui->lCountMedia->setText( QString::number( ui->lCountMedia->text().toInt() + vector.size() ) );
 
-    printVecotrToPlainText(id, ui->pteMediaIdsHot);
-    printVecotrToPlainText(username, ui->pteUsernamesHot );
-    printVecotrToPlainText(id_ow, ui->pteIdsHot );
+//    printVecotrToPlainText(id, ui->pteMediaIdsHot);
+//    printVecotrToPlainText(username, ui->pteUsernamesHot );
+//    printVecotrToPlainText(id_ow, ui->pteIdsHot );
 }
 
-void InstaTools::saveAuthToken( QString token )
-{
-    list_access_token.push_back( {"username", token} );
 
-    ui->lwRelTokenList->clear();
-    ui->pteTokenList->clear();
-
-    printVecotrToListWidget(list_access_token, ui->lwRelTokenList);
-    printVecotrToPlainText(list_access_token, ui->pteTokenList);
-}
-
-void InstaTools::saveSignleAuthToken(QString token)
-{
-    access_token = token;
-    list_access_token.push_back( {"username", token} );
-
-    ui->lwRelTokenList->clear();
-    ui->pteTokenList->clear();
-
-    printVecotrToListWidget(list_access_token, ui->lwRelTokenList);
-    printVecotrToPlainText(list_access_token, ui->pteTokenList);
-
-    if(access_token == "error")
-    {
-        ui->lAuthStatus1->setText("Вам не удалось авторизоваться");
-        ui->lAuthStatus2->setText("Проверьте логин/пароль на корректность");
-        return;
-    }
-
-    ui->lAuthStatus1->setText("Вы успешно авторизовались");
-    ui->lAuthStatus2->setText(access_token);
-}
 
 
 void InstaTools::on_lMenu_activated(const QModelIndex &index)
@@ -181,3 +199,51 @@ void InstaTools::on_lMenu_currentRowChanged(int currentRow)
 
 
 
+
+
+
+
+void InstaTools::on_pteAuthLogins_textChanged()
+{
+    int count = ui->pteAuthLogins->document()->lineCount();
+
+    if( count > 0 )
+    {
+     if( ui->pteAuthLogins->document()->findBlockByLineNumber( count-1 ).text() == "" )
+        ui->lAuthLoginsCount->setText( "Логины ("+QString::number( count-1 )+"):");
+     else
+        ui->lAuthLoginsCount->setText( "Логины ("+QString::number( count )+"):");
+    }
+    else
+       ui->lAuthLoginsCount->setText( "Логины (0):");
+}
+
+void InstaTools::on_pteAuthPasswords_textChanged()
+{
+    int count = ui->pteAuthPasswords->document()->lineCount();
+
+    if( count > 0 )
+    {
+     if( ui->pteAuthPasswords->document()->findBlockByLineNumber( count-1 ).text() == "" )
+        ui->lAuthPasswordsCount->setText( "Пароли ("+QString::number( count-1 )+"):");
+     else
+        ui->lAuthPasswordsCount->setText( "Пароли ("+QString::number( count )+"):");
+    }
+    else
+       ui->lAuthPasswordsCount->setText( "Пароли (0):");
+}
+
+void InstaTools::on_pteAuthProxy_textChanged()
+{
+    int count = ui->pteAuthProxy->document()->lineCount();
+
+    if( count > 0 )
+    {
+     if( ui->pteAuthProxy->document()->findBlockByLineNumber( count-1 ).text() == "" )
+        ui->lAuthProxyCount->setText( "Прокси ("+QString::number( count-1 )+"):");
+     else
+        ui->lAuthProxyCount->setText( "Прокси ("+QString::number( count )+"):");
+    }
+    else
+       ui->lAuthProxyCount->setText( "Прокси (0):");
+}

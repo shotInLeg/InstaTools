@@ -21,7 +21,6 @@ SOURCES += main.cpp\
     instatags.cpp \
     instarelat.cpp \
     instagenname.cpp \
-    instamassauth.cpp \
     instaliking.cpp \
     netthread.cpp
 

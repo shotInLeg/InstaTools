@@ -6,13 +6,6 @@
 
 namespace insta_api
 {
-    QMap<QString, QString> getCookieAuth(QString login, QString password );
-    QString getInstToken( QMap<QString, QString> cookie );
-    QString getTokenFromURL( QString url );
-
-    QString authentiacation( QString login, QString password );
-
-
     struct media
     {
         QString id;
@@ -35,18 +28,42 @@ namespace insta_api
     {
         QString username;
         QString password;
+        QString app;
+        QString proxy_type;
+        QString proxy_ip;
+        QString proxy_port;
+        QString token;
     };
 
-    QVector<user> getFollows(QString access_token);
-    QVector<user> getFollowers(QString access_token);
-    QVector<user> getUserFollows(QString user_id, QString access_token);
-    QVector<user> getUserFollowers(QString user_id, QString access_token);
-    QVector<media> getMediaList(QString user_id, QString access_token);
-    QVector<user> getMediaLikersList(QString media_id, QString access_token);
-    void setLike (QString media_id, QString access_token );
-    void setFollow( QString user_id, QString access_token );
-    QString getIdFromUsername(QString username , QString access_token);
-    QVector<media> getHotList(QString tag, QString access_token, int count);
+
+
+    account             authentiacation         ( const account& acc );
+    QVector<user>       getFollows              ( const account& acc);
+    QVector<user>       getFollowers            ( const account& acc);
+    QVector<user>       getUserFollows          (  const QString& user_id,  const account& acc );
+    QVector<user>       getUserFollowers        (  const QString& user_id,  const account& acc );
+    QVector<media>      getMediaList            (  const QString& user_id,  const account& acc );
+    QVector<user>       getMediaLikersList      (  const QString& media_id,  const account& acc );
+    void                setLike                 (  const QString& media_id,  const account& acc );
+    void                setFollow               (  const QString& user_id,  const account& acc );
+    QString             getIdFromUsername       (  const QString& username, const account& acc);
+    QVector<media>      getHotList              (  const QString& tag,  const account& acc, int count);
+
+
+    //Модифицированные функции HTTP запросов
+    QByteArray                          GET(  const QString& url,  QMap<QString, QString>& data,  const account& acc );
+    QByteArray                          POST(  const QString& url,  QMap<QString, QString>& data,  const account& acc );
+
+    //Вспомогательные функции
+
+    QNetworkProxy*                      proxyFromAccount        ( const account& acc );
+    QNetworkProxy::ProxyType            proxyFromString         ( const QString& proxy_type );
+    QString                             tokenFromURL            (  const QString& url );
+
+
+    QMap<QString, QString>              getCookieAuth( const account& acc  );
+    account                             getInstToken(QMap<QString, QString> cookie , const account& acc);
+
 
 }
 

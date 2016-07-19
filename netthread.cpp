@@ -1,97 +1,106 @@
 #include "instatools.h"
 #include "ui_instatools.h"
 
-void NetThread::setFlag(QVector< QPair<method, QVector<QString> > > mth )
+void NetThread::addWork(method mthd, insta_api::account acc, QVector<QString> mth )
 {
-    api_methods = mth;
+    api_methods.push_back( createItem( mthd, acc, mth ) );
 }
 
 void NetThread::run()
 {
     for(int i = 0; i < api_methods.size(); i++)
     {
-        if( api_methods.at(i).first == AUTH )
+        method mthd = api_methods.at(i).mthd;
+        insta_api::account acc = api_methods.at(i).acc;
+        QVector<QString> params = api_methods.at(i).params;
+
+
+        if( mthd == AUTH )
         {
-            QString login = api_methods.at(i).second.at(0);
-            QString password = api_methods.at(i).second.at(1);
+            insta_api::account accn = insta_api::authentiacation( acc );
 
-            QString token = insta_api::authentiacation( login, password );
-
-            emit finishAuth(token);
+            emit finishAuth( accn );
             continue;
         }
 
-        QString access_token = api_methods.at(i).second.at(0);
-
-        if( api_methods.at(i).first == GET_FOLLOWS )
+        if( mthd == GET_FOLLOWS )
         {
-            QVector<insta_api::user> follows = insta_api::getFollows( access_token );
+            QVector<insta_api::user> follows = insta_api::getFollows( acc );
 
-            emit finishGetFollows(follows);
+            emit finishGetFollows( follows );
         }
-        else if( api_methods.at(i).first == GET_FOLLOWERS )
+        else if( mthd == GET_FOLLOWERS )
         {
-            QVector<insta_api::user> followers = insta_api::getFollowers( access_token );
+            QVector<insta_api::user> followers = insta_api::getFollowers( acc );
 
-            emit finishGetFollowers(followers);
+            emit finishGetFollowers( followers );
         }
-        else if( api_methods.at(i).first == GET_USER_FOLLOWS )
+        else if( mthd == GET_USER_FOLLOWS )
         {
-            QString user_id = insta_api::getIdFromUsername( api_methods.at(i).second.at(1), access_token);
+            QString user_id = insta_api::getIdFromUsername( params.at(0), acc );
 
-            QVector<insta_api::user> follows = insta_api::getUserFollows(user_id, access_token );
+            QVector<insta_api::user> follows = insta_api::getUserFollows( user_id, acc );
 
-            emit finishGetFollows(follows);
+            emit finishGetFollows( follows );
         }
-        else if( api_methods.at(i).first == GET_USER_FOLLOWERS )
+        else if( mthd == GET_USER_FOLLOWERS )
         {
-            QString user_id = insta_api::getIdFromUsername( api_methods.at(i).second.at(1), access_token);
+            QString user_id = insta_api::getIdFromUsername( params.at(0), acc );
 
-            QVector<insta_api::user> followers = insta_api::getUserFollowers(user_id, access_token );
+            QVector<insta_api::user> followers = insta_api::getUserFollowers( user_id, acc );
 
-            emit finishGetFollowers(followers);
+            emit finishGetFollowers( followers );
         }
-        else if( api_methods.at(i).first == GET_TAGS )
+        else if( mthd == GET_TAGS )
         {
-            QString tag = api_methods.at(i).second.at(1);
+            QString tag = params.at(0);
 
-            QVector<insta_api::media> media = insta_api::getHotList( tag, access_token, 100);
+            QVector<insta_api::media> media = insta_api::getHotList( tag, acc, 100);
 
-            emit finishGetTags(media);
+            emit finishGetTags( media );
         }
-        else if( api_methods.at(i).first == SET_LIKE )
+        else if( mthd == SET_LIKE )
         {
-            QString media_id = api_methods.at(i).second.at(1);
+            QString media_id = params.at(0);
 
-            insta_api::setLike( media_id, access_token );
+            insta_api::setLike( media_id, acc );
 
             emit finishSetLike("");
         }
-        else if( api_methods.at(i).first == SET_FOLLOW )
+        else if( mthd == SET_FOLLOW )
         {
-            QString user_id = api_methods.at(i).second.at(1);
+            QString user_id = params.at(0);
 
-            insta_api::setFollow( user_id, access_token );
+            insta_api::setFollow( user_id, acc );
 
             emit finishSetFollow("");
         }
-        else if( api_methods.at(i).first == GET_USER_MEDIA )
+        else if( mthd == GET_USER_MEDIA )
         {
-            QString user_id = insta_api::getIdFromUsername( api_methods.at(i).second.at(1), access_token);
+            QString user_id = insta_api::getIdFromUsername( params.at(0), acc );
 
-            QVector<insta_api::media> media = insta_api::getMediaList( user_id, access_token );
+            QVector<insta_api::media> media = insta_api::getMediaList( user_id, acc );
 
-            emit finishGetUserMedia(media);
+            emit finishGetUserMedia( media );
         }
-        else if( api_methods.at(i).first == GET_MEDIA_LIKERS )
+        else if( mthd == GET_MEDIA_LIKERS )
         {
-            QString media_id = api_methods.at(i).second.at(1);
+            QString media_id = params.at(0);
 
-            QVector<insta_api::user> users = insta_api::getMediaLikersList(media_id, access_token );
+            QVector<insta_api::user> users = insta_api::getMediaLikersList( media_id, acc );
 
             emit finishGetMediaLikers(users);
         }
     }
+}
 
-     emit finished();
+NetThread::queueItem NetThread::createItem(NetThread::method _mthd, insta_api::account _acc, const QVector<QString> &_params)
+{
+    queueItem qItem;
+
+    qItem.mthd = _mthd;
+    qItem.acc = _acc;
+    qItem.params = _params;
+
+    return qItem;
 }

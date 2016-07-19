@@ -12,6 +12,7 @@
 
 Q_DECLARE_METATYPE( QVector<insta_api::user> )
 Q_DECLARE_METATYPE( QVector<insta_api::media> )
+Q_DECLARE_METATYPE( insta_api::account )
 
 namespace Ui {
 class InstaTools;
@@ -20,18 +21,24 @@ class InstaTools;
 class NetThread : public QThread
 {
     Q_OBJECT
+public:
+    enum method {SET_LIKE, SET_FOLLOW, GET_FOLLOWS, GET_FOLLOWERS, GET_USER_FOLLOWS, GET_USER_FOLLOWERS, GET_TAGS, GET_USER_MEDIA, GET_MEDIA_LIKERS, AUTH };
+
+    struct queueItem
+    {
+        method mthd;
+        insta_api::account acc;
+        QVector<QString> params;
+    };
 
 public:
     explicit NetThread(){}
     ~NetThread(){}
 
-    enum method {SET_LIKE, SET_FOLLOW, GET_FOLLOWS, GET_FOLLOWERS, GET_USER_FOLLOWS, GET_USER_FOLLOWERS, GET_TAGS, GET_USER_MEDIA, GET_MEDIA_LIKERS, AUTH };
-
-    void setFlag( QVector< QPair<method, QVector<QString> > > mth );
+    void addWork(method, insta_api::account acc, QVector<QString> mth );
     void run();
 
 signals:
-    void finished();
     void finishGetFollows(QVector<insta_api::user>);
     void finishGetFollowers(QVector<insta_api::user>);
     void finishGetTags(QVector<insta_api::media>);
@@ -39,10 +46,14 @@ signals:
     void finishGetMediaLikers(QVector<insta_api::user>);
     void finishSetLike(QString);
     void finishSetFollow(QString);
-    void finishAuth(QString);
+    void finishAuth( insta_api::account );
 
 private:
-    QVector< QPair<method, QVector<QString> > > api_methods;
+
+    queueItem createItem( method _mthd, insta_api::account _acc, const QVector<QString>& _params );
+
+private:
+    QVector< queueItem > api_methods;
     QString access_token;
 };
 
@@ -60,8 +71,6 @@ private slots:
     void on_lMenu_activated(const QModelIndex &index);
 
     void on_lMenu_currentRowChanged(int currentRow);
-
-    void on_bAuth_clicked();
 
     void on_bLoadFollowList_clicked();
 
@@ -85,17 +94,32 @@ private slots:
 
     void on_bActiveFollowers_clicked();
 
+    void on_bAuthSend_clicked();
+
+
+    void on_bAuthMassSendAuth_clicked();
+
+    void on_pteAuthLogins_textChanged();
+
+    void on_pteAuthPasswords_textChanged();
+
+    void on_pteAuthProxy_textChanged();
+
 public slots:
-    void getToken(QUrl url);
+    //void getToken(QUrl url);
+    QVector<QString> vectorFromPTE( QPlainTextEdit* pte );
     void printVectorFollows( const QVector<insta_api::user> &vector );
     void printVectorFollowers(const QVector<insta_api::user> &vector );
     void printVectorTags(const QVector<insta_api::media> &vector );
-    void saveAuthToken(QString);
-    void saveSignleAuthToken(QString token);
+
     void loadMediaLikers( const QVector<insta_api::media> &vector );
     void loadMediaLikersActive( const QVector<insta_api::media> &vector );
     void countRatingLikers(QVector<insta_api::user> vector );
     void printActiveLikers(QVector<insta_api::user> vector );
+
+
+    void saveSingleAuthAccount(insta_api::account acc);
+    void saveMassAuthAccount( insta_api::account acc );
 private:
     QVector<QString> getVectorFromPlainText(QPlainTextEdit* pte);
     QVector< QVector<QString> > getParsedVectorFromPlainText(QPlainTextEdit* pte);
@@ -103,13 +127,17 @@ private:
     void printVecotrToPlainText(const QVector<QPair<QString,QString> > &vector, QPlainTextEdit* pte);
     void printVecotrToListWidget(const QVector<QPair<QString,QString> > &vector, QListWidget* pte);
     void printMapToPlainText(const QMap<QString,int>& map, QPlainTextEdit * pte);
+    QString getProxyType(const QString &proxy_line );
+    QString getProxyIp(const QString &proxy_line );
+    QString getProxyPort(const QString &proxy_line );
+    QString getAppId();
 
 
 
 private:
     Ui::InstaTools *ui;
 
-    QString access_token;
+    QVector< insta_api::account > accounts;
     QVector< QPair<QString, QString> > list_access_token;
 
     int count_lists;
